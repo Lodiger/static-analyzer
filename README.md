@@ -27,31 +27,21 @@
 
 ## Паттерн «Каналы и фильтры»
 
-```
-                     Канал передачи: StatResult
-                     ┌────────────────────────────┐
-Ввод (rawData) ──▶  │  ValidationFilter           │
-                     │  ├─ проверка длины / null   │
-                     │  ↓                          │
-                     │  ParseFilter                │
-                     │  ├─ String → Double         │
-                     │  ├─ пропуск некорректных    │
-                     │  ↓                          │
-                     │  SortFilter                 │
-                     │  ├─ сортировка по возраст.  │
-                     │  ↓                          │
-                     │  StatCalcFilter             │
-                     │  ├─ μ, σ, Asym, Kurt, CV   │
-                     │  ├─ Q1/Q3/IQR, bins[]      │
-                     │  ↓                          │
-                     │  HistogramFilter            │
-                     │  ├─ точки кривой N(μ,σ)    │
-                     └────────────────────────────┘
-                             ↓
-                         StatResult  ──▶  UI (JavaFX Canvas + TableView)
-                             ↓
-                       ExportFilter  ──▶  PNG | SVG | PDF | HTML
-                                    ──▶  CSV | XLSX | JSON | MD
+```mermaid
+flowchart LR
+    I([Ввод rawData])
+    subgraph pipe["Канал передачи: StatResult"]
+        V["ValidationFilter\nпроверка null / длины"]
+        P["ParseFilter\nString → Double"]
+        S["SortFilter\nсортировка"]
+        SC["StatCalcFilter\nμ, σ, медиана, мода,\nасимметрия, эксцесс,\nCV, Q1/Q3/IQR, bins"]
+        H["HistogramFilter\nкривая N(μ,σ), 200 точек"]
+    end
+    I --> V --> P --> S --> SC --> H --> R([StatResult])
+    R --> UI["UI\nCanvas + TableView"]
+    R --> E["ExportService"]
+    E --> G["PNG · SVG · PDF · HTML"]
+    E --> T["CSV · XLSX · JSON · MD"]
 ```
 
 **Единый интерфейс фильтра:**
@@ -126,128 +116,182 @@ src/test/java/com/statanalyzer/
 
 ## Диаграммы
 
-### Use-case (текстовое описание)
+### Use-case
 
-```
-Актёр: Пользователь
-
-Use-cases:
-  UC1: Загрузить файл
-        Предусловие: приложение запущено
-        Поток: выбор .csv/.xlsx → автоматический парсинг заголовков
-        Альтернатива: несовместимый формат → Alert с ошибкой
-
-  UC2: Выбрать колонки
-        Предусловие: файл загружен (UC1)
-        Поток: отметить нужные колонки флажками
-
-  UC3: Настроить параметры
-        Предусловие: файл загружен
-        Поток: число бинов, IQR-множитель, флаги отображения
-
-  UC4: Запустить анализ
-        Предусловие: выбрана хотя бы одна колонка
-        Поток: запуск конвейера → гистограмма + таблица метрик
-        Альтернатива: менее 3 числовых значений → ошибка валидации
-
-  UC5: Сохранить результаты
-        Предусловие: анализ выполнен (UC4)
-        Поток: выбор формата и пути → сохранение файла
-        Альтернативы:
-          - график: PNG, SVG, PDF, HTML
-          - таблица: CSV, XLSX, JSON, Markdown
-
-  UC6: Управление конфигурацией
-        Поток: сохранить/загрузить JSON-конфиг настроек
-
-  UC7: Просмотр справки (F1)
-        Поток: открыть окно с формулами и инструкцией
+```mermaid
+flowchart LR
+    U(("Пользователь"))
+    subgraph sys["Статистический анализатор"]
+        UC1["UC1: Загрузить файл\n.csv / .xlsx / .xls"]
+        UC2["UC2: Выбрать колонки"]
+        UC3["UC3: Настроить параметры"]
+        UC4["UC4: Запустить анализ"]
+        UC5["UC5: Сохранить результаты"]
+        UC6["UC6: Управление конфигурацией"]
+        UC7["UC7: Просмотр справки"]
+    end
+    U --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7
+    UC1 -.->|include| UC2
+    UC3 -.->|extend| UC4
+    UC4 -.->|include| UC5
 ```
 
-### Диаграмма классов (текстовое описание)
+### Диаграмма классов
 
-```
-<<interface>>
-Filter<T,R>
-  + execute(T): R
-  + getName(): String
-        ▲
-        │ implements
-  ┌─────┴──────┬─────────────┬───────────────┬────────────┬───────────┐
-ValidationFilter ParseFilter SortFilter StatCalcFilter HistogramFilter ExportFilter
-  (все: Filter<StatResult,StatResult>)
+```mermaid
+classDiagram
+    class Filter {
+        <<interface>>
+        +execute(StatResult) StatResult
+        +getName() String
+    }
+    class ValidationFilter
+    class ParseFilter
+    class SortFilter
+    class StatCalcFilter
+    class HistogramFilter
+    class ExportFilter
 
-StatResult  ◄────────── Pipeline ──────────► List<Filter>
-  + rawData          + addFilter(Filter)
-  + parsedValues     + execute(StatResult): StatResult
-  + sortedValues
-  + statistics       ExportService
-  + binEdges[]         + export(StatResult, File, ExportType, format)
-  + frequencies[]      + renderHistogramToImage(...)
-  + normalCurveX[]     + snapshotCanvas(Canvas)
-  + normalCurveY[]
-  + pipelineLog      AppConfig
-  + valid              + numBins, iqrMultiplier
-  + errorMessage       + showNormalCurve, showGrid
-                       + save(File), load(File): AppConfig
+    Filter <|.. ValidationFilter
+    Filter <|.. ParseFilter
+    Filter <|.. SortFilter
+    Filter <|.. StatCalcFilter
+    Filter <|.. HistogramFilter
+    Filter <|.. ExportFilter
 
-StatController ──► Pipeline, ExportService, AppConfig
-  (FXML-контроллер главного окна)
+    class StatResult {
+        +columnName: String
+        +rawData: List~String~
+        +parsedValues: List~Double~
+        +sortedValues: List~Double~
+        +n: int
+        +mean: double
+        +stdDev: double
+        +median: double
+        +skewness: double
+        +kurtosis: double
+        +coefficientOfVariation: double
+        +q1: double
+        +q3: double
+        +iqr: double
+        +binEdges: double[]
+        +frequencies: int[]
+        +normalCurveX: double[]
+        +normalCurveY: double[]
+        +pipelineLog: List~String~
+        +valid: boolean
+        +errorMessage: String
+        +getStatisticsMap() Map~String, String~
+        +addLog(String) void
+    }
+
+    class Pipeline {
+        -filters: List~Filter~
+        +addFilter(Filter) Pipeline
+        +execute(StatResult) StatResult
+    }
+
+    class ExportService {
+        +export(StatResult, File, ExportType, String) void
+        +renderHistogramToImage(StatResult, int, int) BufferedImage
+    }
+
+    class AppConfig {
+        +numBins: int
+        +iqrMultiplier: double
+        +showNormalCurve: boolean
+        +showGrid: boolean
+        +showValues: boolean
+        +colorScheme: String
+        +save(File) void
+        +load(File)$ AppConfig
+    }
+
+    class StatController {
+        -fileData: Map
+        -results: Map
+        -config: AppConfig
+        +handleOpenFile() void
+        +handleRunPipeline() void
+        +handleSaveChart() void
+        +handleSaveTable() void
+    }
+
+    Pipeline --> Filter : содержит
+    Pipeline --> StatResult : обрабатывает
+    ExportFilter --> ExportService : делегирует
+    StatController --> Pipeline : создаёт
+    StatController --> AppConfig : использует
+    StatController --> ExportService : вызывает
 ```
 
 ### Диаграмма последовательностей
 
-```
-Пользователь → UI → StatController → Pipeline
-                                        ├─► ValidationFilter.execute(StatResult)
-                                        ├─► ParseFilter.execute(StatResult)
-                                        ├─► SortFilter.execute(StatResult)
-                                        ├─► StatCalcFilter.execute(StatResult)
-                                        └─► HistogramFilter.execute(StatResult)
-                                                              ↓
-                              StatController ◄──────── StatResult
-                                  │
-                                  ├─► drawHistogram(Canvas, StatResult)
-                                  ├─► updateStatsTable(TableView, StatResult)
-                                  └─► pipelineLogArea.setText(log)
+```mermaid
+sequenceDiagram
+    actor U as Пользователь
+    participant C as StatController
+    participant P as Pipeline
+    participant V as ValidationFilter
+    participant Pa as ParseFilter
+    participant S as SortFilter
+    participant SC as StatCalcFilter
+    participant H as HistogramFilter
+    participant E as ExportService
 
-При сохранении:
-StatController → ExportFilter.execute(StatResult) → ExportService.export(...)
-                                                              ↓
-                                                       File (PNG/SVG/PDF/HTML/CSV/XLSX/JSON/MD)
+    U->>C: handleRunPipeline()
+    loop Для каждой выбранной колонки
+        C->>P: execute(StatResult)
+        P->>V: execute(StatResult)
+        V-->>P: StatResult
+        P->>Pa: execute(StatResult)
+        Pa-->>P: StatResult
+        P->>S: execute(StatResult)
+        S-->>P: StatResult
+        P->>SC: execute(StatResult)
+        SC-->>P: StatResult
+        P->>H: execute(StatResult)
+        H-->>P: StatResult
+        P-->>C: StatResult (готов)
+    end
+    C->>C: drawHistogram()
+    C->>C: updateStatsTable()
+    C-->>U: UI обновлён
+
+    opt Сохранение результатов
+        U->>C: handleSaveChart() / handleSaveTable()
+        C->>E: export(result, file, type, format)
+        E-->>C: файл сохранён
+        C-->>U: статус обновлён
+    end
 ```
 
-### Диаграмма конвейера (активность)
+### Диаграмма активности (конвейер)
 
-```
-[Пользователь нажимает «Запустить»]
-        │
-        ▼
-[Для каждой выбранной колонки]
-        │
-        ▼
-[ValidationFilter]─── rawData == null или < 3? ──► [ОШИБКА: показать Alert] ──► СТОП
-        │ нет
-        ▼
-[ParseFilter]─── после парсинга < 3 чисел? ──► [ОШИБКА] ──► СТОП
-        │ нет
-        ▼
-[SortFilter] → сортировка List<Double>
-        │
-        ▼
-[StatCalcFilter] → μ, σ, медиана, мода, асимметрия, эксцесс, CV, Q1/Q3, бины
-        │
-        ▼
-[HistogramFilter] → точки кривой PDF (200 точек)
-        │
-        ▼
-[StatResult готов]
-        │
-        ▼
-[UI: рисует гистограмму + обновляет таблицу + заполняет журнал]
-        │
-        ▼
-[Пользователь сохраняет] ──► [ExportFilter → ExportService] ──► File
+```mermaid
+flowchart TD
+    Start([Нажата кнопка Запустить]) --> Check{Колонки\nвыбраны?}
+    Check -->|нет| Warn["Предупреждение:\nвыберите колонку"] --> End([Конец])
+    Check -->|да| Loop["Для каждой\nвыбранной колонки"]
+
+    Loop --> VF["ValidationFilter\nпроверка rawData"]
+    VF --> VErr{Ошибка?}
+    VErr -->|да| ErrLog["Лог: invalid\nStatResult.valid = false"]
+    VErr -->|нет| PF["ParseFilter\nString → Double"]
+
+    PF --> PErr{Ошибка?}
+    PErr -->|да| ErrLog
+    PErr -->|нет| SF["SortFilter\nCollections.sort"]
+
+    SF --> SCF["StatCalcFilter\nμ, σ, медиана, мода\nасимметрия, эксцесс, CV\nQ1, Q3, IQR, bins"]
+    SCF --> HF["HistogramFilter\nкривая N(μ,σ), 200 точек"]
+    HF --> OkLog["Лог: success"]
+
+    ErrLog --> Next{Ещё\nколонки?}
+    OkLog --> Next
+    Next -->|да| Loop
+    Next -->|нет| UI["Обновить UI\nГистограмма · Таблица · Журнал"]
+    UI --> End
 ```
 
 ---
