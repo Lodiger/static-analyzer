@@ -1,0 +1,122 @@
+/* ═══ Глобальные стили ════════════════════════════════════════════════════ */
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f0f0f0;
+}
+
+/* ═══ Боковая панель ══════════════════════════════════════════════════════ */
+.sidebar {
+    -fx-background-color: #fafafa;
+    -fx-border-color: #ddd;
+    -fx-border-width: 0 1 0 0;
+}
+
+.section-title .title {
+    -fx-background-color: #e8e8e8;
+    -fx-font-weight: bold;
+}
+
+.file-info {
+    -fx-text-fill: #555;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+
+.hint-label {
+    -fx-text-fill: #888;
+    -fx-font-size: 11px;
+}
+
+.column-list {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+}
+
+/* ═══ Кнопки ══════════════════════════════════════════════════════════════ */
+.action-button {
+    -fx-background-color: #4a90d9;
+    -fx-text-fill: white;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.action-button:hover {
+    -fx-background-color: #357abd;
+}
+
+.big-run-button {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.big-run-button:hover {
+    -fx-background-color: #219a52;
+}
+
+.big-run-button:disabled {
+    -fx-background-color: #95a5a6;
+}
+
+.run-button {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.run-button:hover {
+    -fx-background-color: #219a52;
+}
+
+.toolbar-button {
+    -fx-cursor: hand;
+}
+
+/* ═══ Статус ══════════════════════════════════════════════════════════════ */
+.status-label {
+    -fx-text-fill: #555;
+    -fx-font-style: italic;
+    -fx-padding: 0 8;
+}
+
+/* ═══ Таблица ═════════════════════════════════════════════════════════════ */
+.table-view .column-header {
+    -fx-background-color: #3c5a99;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9;
+}
+
+.table-row-cell:even {
+    -fx-background-color: white;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #cce5ff;
+    -fx-text-fill: black;
+}
+
+/* ═══ Вкладки ═════════════════════════════════════════════════════════════ */
+.tab-header-area .tab {
+    -fx-background-color: #e0e0e0;
+}
+
+.tab-header-area .tab:selected {
+    -fx-background-color: white;
+}
+
+/* ═══ Прогресс ════════════════════════════════════════════════════════════ */
+.progress-indicator {
+    -fx-progress-color: #27ae60;
+}
